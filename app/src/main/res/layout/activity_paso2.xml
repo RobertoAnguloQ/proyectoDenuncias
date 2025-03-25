@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/layoutStepTwo"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".Paso_dos"
+    android:padding="16dp">
+
+    <!-- Barra superior (puedes usar un Toolbar o un TextView simple) -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/purple_500"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        android:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+        android:elevation="4dp"/>
+
+    <!-- Encabezado o imagen superior -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:background="@color/purple_200">
+
+        <!-- Aquí podrías colocar un ImageView con tu icono central -->
+        <!-- <ImageView
+             android:layout_width="wrap_content"
+             android:layout_height="wrap_content"
+             android:src="@drawable/ic_denuncia"
+             android:layout_gravity="center"/> -->
+    </FrameLayout>
+
+    <!-- Texto principal -->
+    <TextView
+        android:id="@+id/tvPregunta"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="¿A quién va dirigida su denuncia?"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp"/>
+
+    <!-- Botón/Enlace para "Conoce el ABC de las denuncias" -->
+    <TextView
+        android:id="@+id/tvConoceABC"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Conoce el ABC de las denuncias"
+        android:textColor="@android:color/holo_blue_dark"
+        android:layout_marginTop="8dp"/>
+
+    <!-- Botones -->
+    <Button
+        android:id="@+id/btnServidorPublico"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Servidor Público"/>
+
+    <Button
+        android:id="@+id/btnVehiculo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Vehículo"/>
+
+    <Button
+        android:id="@+id/btnServicio"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Servicio"/>
+
+</LinearLayout>

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Barra superior -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:background="@color/purple_200"
+            android:orientation="horizontal">
+
+            <!-- <ImageView
+                 android:layout_width="24dp"
+                 android:layout_height="24dp"
+                 android:src="@drawable/ic_arrow_back"
+                 android:onClick="onBackPressed"
+                 android:tint="@android:color/white"/> -->
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Paso 3"
+                android:textSize="18sp"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                android:gravity="center"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="3/5"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
+
+        <!-- Título -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="¿Puede describir los hechos de su denuncia sobre un servidor público?"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:paddingTop="16dp"/>
+
+        <EditText
+            android:id="@+id/etDescripcion"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:hint="Escriba aquí su descripción"
+            android:background="@android:drawable/editbox_background"
+            android:gravity="top"
+            android:padding="8dp"/>
+
+        <!-- Selector de Hora -->
+        <Button
+            android:id="@+id/btnHora"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Seleccione una hora"
+            android:background="@drawable/button_background"/>
+
+        <!-- Selector de Fecha -->
+        <Button
+            android:id="@+id/btnFecha"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Seleccione una fecha"
+            android:background="@drawable/button_background"/>
+
+        <EditText
+            android:id="@+id/etLugar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Lugar de los hechos"
+            android:background="@android:drawable/editbox_background"
+            android:padding="8dp"/>
+
+        <!-- Adjuntar archivos -->
+        <Button
+            android:id="@+id/btnAdjuntar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Adjuntar archivos"
+            android:background="@drawable/button_background"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Puede adjuntar documentos, imágenes, audios o videos"
+            android:textSize="12sp"
+            android:textColor="@android:color/darker_gray"
+            android:paddingTop="8dp"/>
+
+        <!-- Botón Continuar -->
+        <Button
+            android:id="@+id/btnContinuar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Continuar"
+            android:background="@color/purple_200"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="16dp"/>
+    </LinearLayout>
+</ScrollView>

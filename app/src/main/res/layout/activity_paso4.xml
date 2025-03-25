@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Barra superior -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:background="@color/purple_200"
+            android:orientation="horizontal">
+
+            <!--   <ImageView
+                  android:layout_width="24dp"
+                  android:layout_height="24dp"
+                  android:src="@drawable/ic_arrow_back"
+                  android:onClick="onBackPressed"
+                  android:tint="@android:color/white"/> -->
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Paso 4"
+                android:textSize="18sp"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                android:gravity="center"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="4/5"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
+
+        <!-- Título -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="¿Puede proporcionarnos alguna información acerca del servidor público?"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:paddingTop="16dp"/>
+
+        <!-- Campos de texto -->
+        <EditText
+            android:id="@+id/etNombre"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Ingresa el nombre"
+            android:background="@android:drawable/editbox_background"
+            android:padding="8dp"/>
+
+        <EditText
+            android:id="@+id/etPuesto"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Ingresa el puesto"
+            android:background="@android:drawable/editbox_background"
+            android:padding="8dp"/>
+
+        <EditText
+            android:id="@+id/etDependencia"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Ingresa dependencia"
+            android:background="@android:drawable/editbox_background"
+            android:padding="8dp"/>
+
+        <EditText
+            android:id="@+id/etLugar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Ingresa el lugar"
+            android:background="@android:drawable/editbox_background"
+            android:padding="8dp"/>
+
+        <!-- Botón Continuar -->
+        <Button
+            android:id="@+id/btnContinuar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Continuar"
+            android:background="@color/purple_200"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="16dp"/>
+    </LinearLayout>
+</ScrollView>
