@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <!-- Permisos necesarios para acceso al almacenamiento -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+
+    <!-- Permisos necesarios -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"/> <!-- Solo para Android 9 o menor -->
+    <uses-feature android:name="android.hardware.camera" android:required="true"/>
 
     <application
         android:allowBackup="true"
@@ -17,28 +20,39 @@
         android:theme="@style/Theme.ProyectoDenuncias"
         tools:targetApi="31">
 
+        <!-- Configuración del FileProvider para compartir fotos -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.proyectodenuncias.fileprovider"
+            android:grantUriPermissions="true"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_provider_paths"/>
+        </provider>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.proyectodenuncias.provider"
+            android:grantUriPermissions="true"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- Actividades de la aplicación -->
-        <activity
-            android:name=".pasofinal"
-            android:exported="false" />
-        <activity
-            android:name=".paso5"
-            android:exported="false" />
-        <activity
-            android:name=".paso_4"
-            android:exported="false" />
-        <activity
-            android:name=".paso_3"
-            android:exported="false" />
-        <activity
-            android:name=".Paso_dos"
-            android:exported="false" />
+        <activity android:name=".pasofinal" android:exported="false"/>
+        <activity android:name=".paso5" android:exported="false"/>
+        <activity android:name=".paso_4" android:exported="false"/>
+        <activity android:name=".paso_3" android:exported="false"/>
+        <activity android:name=".Paso_dos" android:exported="false"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
     </application>
