@@ -1,32 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!-- Directorio de caché interna de la aplicación -->
-    <cache-path
-        name="internal_cache"
-        path="/" />
-
-    <!-- Directorio de caché externa de la aplicación -->
-    <external-cache-path
-        name="external_cache"
-        path="/" />
-
-    <!-- Directorio para imágenes (usado por la cámara y selección de fotos) -->
     <external-files-path
-        name="images"
-        path="Pictures/" />
+        name="camera_images"
+        path="Pictures/ProyectoDenuncias/" />
+    <cache-path
+        name="camera_cache"
+        path="temp_photos/" />
+    <!-- Directorio para fotos de la cámara -->
+    <external-files-path
+        name="denuncias_images"
+        path="Pictures/ProyectoDenuncias/" />
 
     <!-- Directorio para documentos PDF generados -->
     <external-files-path
-        name="documents"
-        path="Documents/" />
+        name="denuncias_documents"
+        path="Documents/Denuncias/" />
 
-    <!-- Directorio raíz de archivos externos (uso cuidadoso) -->
+    <!-- Directorio temporal para procesamiento de imágenes -->
+    <cache-path
+        name="denuncias_temp"
+        path="temp_photos/" />
+
+    <!-- Directorio para archivos descargados -->
     <external-files-path
-        name="external_files"
-        path="." />
+        name="denuncias_downloads"
+        path="Downloads/" />
 
-    <!-- Directorio de descargas (opcional para futuras implementaciones) -->
-    <!-- <external-path
-        name="downloads"
-        path="Download/" /> -->
+    <!-- Directorio para archivos compartidos temporalmente -->
+    <external-cache-path
+        name="denuncias_shared"
+        path="shared/" />
+
+    <!-- Directorio raíz de caché (usar con precaución) -->
+    <cache-path
+        name="denuncias_cache_root"
+        path="/" />
 </paths>

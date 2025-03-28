@@ -1,6 +1,11 @@
 package com.example.proyectodenuncias
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.media.MediaScannerConnection
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
@@ -8,23 +13,29 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import com.itextpdf.kernel.pdf.PdfDocument
-import com.itextpdf.kernel.pdf.PdfWriter
-import com.itextpdf.layout.Document
-import com.itextpdf.layout.element.Paragraph
-import com.itextpdf.layout.element.Image
-import com.itextpdf.kernel.font.PdfFontFactory
 import com.itextpdf.io.font.constants.StandardFonts
 import com.itextpdf.io.image.ImageDataFactory
 import com.itextpdf.kernel.font.PdfFont
+import com.itextpdf.kernel.font.PdfFontFactory
+import com.itextpdf.kernel.pdf.PdfDocument
+import com.itextpdf.kernel.pdf.PdfWriter
+import com.itextpdf.layout.Document
+import com.itextpdf.layout.element.Image
+import com.itextpdf.layout.element.Paragraph
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
 
 class pasofinal : AppCompatActivity() {
+
+    companion object {
+        private const val REQUEST_CODE_PERMISSIONS = 1001
+    }
+
     private lateinit var tvFolio: TextView
     private lateinit var btnVolverInicio: Button
     private lateinit var btnSeguirFolio: Button
@@ -35,18 +46,22 @@ class pasofinal : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_pasofinal)
 
-        // Inicializar vistas
+        initViews()
+        setupListeners()
+    }
+
+    private fun initViews() {
         tvFolio = findViewById(R.id.tvFolio)
         btnVolverInicio = findViewById(R.id.btnVolverInicio)
         btnSeguirFolio = findViewById(R.id.btnSeguirFolio)
         btnGenerarPDF = findViewById(R.id.btnGenerarPDF)
 
-        // Obtener datos del intent
         fotoPath = intent.getStringExtra("fotoPath")
         val folio = intent.getStringExtra("FOLIO") ?: generarFolioTemporal()
         tvFolio.text = "Su folio es: $folio"
+    }
 
-        // Configurar listeners
+    private fun setupListeners() {
         btnVolverInicio.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
@@ -57,136 +72,166 @@ class pasofinal : AppCompatActivity() {
 
         btnSeguirFolio.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java).apply {
-                putExtra("FOLIO", folio)
+                putExtra("FOLIO", intent.getStringExtra("FOLIO") ?: generarFolioTemporal())
             }
             startActivity(intent)
         }
 
         btnGenerarPDF.setOnClickListener {
-            generarPdfCompleto(folio)
+            if (verificarPermisos()) {
+                generarPdfCompleto(intent.getStringExtra("FOLIO") ?: generarFolioTemporal())
+            } else {
+                solicitarPermisos()
+            }
+        }
+    }
+
+    private fun verificarPermisos(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun solicitarPermisos() {
+        ActivityCompat.requestPermissions(
+            this,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
+            } else {
+                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            },
+            REQUEST_CODE_PERMISSIONS
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            REQUEST_CODE_PERMISSIONS -> {
+                if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                    generarPdfCompleto(intent.getStringExtra("FOLIO") ?: generarFolioTemporal())
+                } else {
+                    Toast.makeText(this, "Permisos necesarios denegados", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
     private fun generarPdfCompleto(folio: String) {
         try {
-            // 1. Verificar y crear directorio si no existe
-            val storageDir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: run {
-                Toast.makeText(this, "No se pudo acceder al almacenamiento", Toast.LENGTH_LONG).show()
-                return
-            }
-
+            val storageDir = File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "Denuncias")
             if (!storageDir.exists()) {
-                if (!storageDir.mkdirs()) {
-                    Toast.makeText(this, "No se pudo crear el directorio", Toast.LENGTH_LONG).show()
-                    return
-                }
+                storageDir.mkdirs()
             }
 
-            // 2. Crear archivo PDF
             val pdfFile = File(storageDir, "Denuncia_$folio.pdf")
 
-            // 3. Verificar permisos de escritura
-            if (pdfFile.exists() && !pdfFile.canWrite()) {
-                Toast.makeText(this, "No se tienen permisos para modificar el archivo", Toast.LENGTH_LONG).show()
-                return
-            }
+            PdfWriter(pdfFile).use { writer ->
+                PdfDocument(writer).use { pdfDocument ->
+                    Document(pdfDocument).use { document ->
+                        val font = PdfFontFactory.createFont(StandardFonts.HELVETICA)
+                        val boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD)
 
-            // 4. Generar PDF con manejo seguro de recursos
-            FileOutputStream(pdfFile).use { fos ->
-                PdfWriter(fos).use { pdfWriter ->
-                    PdfDocument(pdfWriter).use { pdfDocument ->
-                        Document(pdfDocument).use { document ->
-                            // Configuración de fuentes
-                            val font = PdfFontFactory.createFont(StandardFonts.HELVETICA)
-                            val boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD)
+                        // Cabecera
+                        document.add(Paragraph("DENUNCIA OFICIAL")
+                            .setFont(boldFont)
+                            .setFontSize(18f)
+                            .setMarginBottom(10f))
 
-                            // Cabecera
-                            document.add(Paragraph("DENUNCIA OFICIAL")
-                                .setFont(boldFont)
-                                .setFontSize(18f)
+                        document.add(Paragraph("Folio: $folio")
+                            .setFont(boldFont)
+                            .setFontSize(14f)
+                            .setMarginBottom(15f))
+
+                        // Datos del incidente
+                        document.add(Paragraph("I. DATOS DEL INCIDENTE")
+                            .setFont(boldFont)
+                            .setFontSize(14f)
+                            .setMarginBottom(5f))
+
+                        addFormField(document, "Descripción:", intent.getStringExtra("descripcion"), font)
+                        addFormField(document, "Lugar:", intent.getStringExtra("lugar"), font)
+                        addFormField(document, "Fecha:", intent.getStringExtra("fecha"), font)
+                        addFormField(document, "Hora:", intent.getStringExtra("hora"), font)
+
+                        // Datos personales
+                        document.add(Paragraph("\nII. DATOS PERSONALES")
+                            .setFont(boldFont)
+                            .setFontSize(14f)
+                            .setMarginBottom(5f))
+
+                        addFormField(document, "Nombre:", intent.getStringExtra("nombre_anterior"), font)
+                        addFormField(document, "Puesto:", intent.getStringExtra("puesto"), font)
+                        addFormField(document, "Dependencia:", intent.getStringExtra("dependencia"), font)
+
+                        // Datos de contacto
+                        document.add(Paragraph("\nIII. DATOS DE CONTACTO")
+                            .setFont(boldFont)
+                            .setFontSize(14f)
+                            .setMarginBottom(5f))
+
+                        val esAnonimo = intent.getBooleanExtra("anonimo", false)
+                        if (esAnonimo) {
+                            document.add(Paragraph("(Denuncia anónima)")
+                                .setFont(font)
+                                .setItalic()
                                 .setMarginBottom(10f))
+                        } else {
+                            addFormField(document, "Nombre:", intent.getStringExtra("nombre"), font)
+                            addFormField(document, "Correo:", intent.getStringExtra("correo"), font)
+                            addFormField(document, "Teléfono:", intent.getStringExtra("telefono"), font)
+                            addFormField(document, "Sexo:", intent.getStringExtra("sexo"), font)
+                        }
 
-                            document.add(Paragraph("Folio: $folio")
-                                .setFont(boldFont)
-                                .setFontSize(14f)
-                                .setMarginBottom(15f))
+                        // Evidencia fotográfica
+                        fotoPath?.let { path ->
+                            try {
+                                document.add(Paragraph("\nIV. EVIDENCIA FOTOGRÁFICA")
+                                    .setFont(boldFont)
+                                    .setFontSize(14f)
+                                    .setMarginBottom(5f))
 
-                            // Datos del incidente (provenientes de pasos anteriores)
-                            document.add(Paragraph("I. DATOS DEL INCIDENTE")
-                                .setFont(boldFont)
-                                .setFontSize(14f)
-                                .setMarginBottom(5f))
-
-                            addFormField(document, "Descripción:", intent.getStringExtra("descripcion"), font)
-                            addFormField(document, "Lugar:", intent.getStringExtra("lugar"), font)
-                            addFormField(document, "Fecha:", intent.getStringExtra("fecha"), font)
-                            addFormField(document, "Hora:", intent.getStringExtra("hora"), font)
-
-                            // Datos personales (provenientes del paso 4)
-                            document.add(Paragraph("\nII. DATOS PERSONALES")
-                                .setFont(boldFont)
-                                .setFontSize(14f)
-                                .setMarginBottom(5f))
-
-                            addFormField(document, "Nombre:", intent.getStringExtra("nombre_anterior"), font)
-                            addFormField(document, "Puesto:", intent.getStringExtra("puesto"), font)
-                            addFormField(document, "Dependencia:", intent.getStringExtra("dependencia"), font)
-
-                            // Datos de contacto (provenientes del paso 5)
-                            document.add(Paragraph("\nIII. DATOS DE CONTACTO")
-                                .setFont(boldFont)
-                                .setFontSize(14f)
-                                .setMarginBottom(5f))
-
-                            val esAnonimo = intent.getBooleanExtra("anonimo", false)
-                            if (esAnonimo) {
-                                document.add(Paragraph("(Denuncia anónima)")
+                                val imageData = ImageDataFactory.create(path)
+                                document.add(Image(imageData)
+                                    .setAutoScale(true)
+                                    .setHorizontalAlignment(com.itextpdf.layout.properties.HorizontalAlignment.CENTER))
+                            } catch (e: Exception) {
+                                Log.e("PDF", "Error al agregar imagen", e)
+                                document.add(Paragraph("[No se pudo cargar la imagen adjunta]")
                                     .setFont(font)
-                                    .setItalic()
-                                    .setMarginBottom(10f))
-                            } else {
-                                addFormField(document, "Nombre:", intent.getStringExtra("nombre"), font)
-                                addFormField(document, "Correo:", intent.getStringExtra("correo"), font)
-                                addFormField(document, "Teléfono:", intent.getStringExtra("telefono"), font)
-                                addFormField(document, "Sexo:", intent.getStringExtra("sexo"), font)
-                            }
-
-                            // Evidencia fotográfica
-                            fotoPath?.let { path ->
-                                try {
-                                    document.add(Paragraph("\nIV. EVIDENCIA FOTOGRÁFICA")
-                                        .setFont(boldFont)
-                                        .setFontSize(14f)
-                                        .setMarginBottom(5f))
-
-                                    val imageData = ImageDataFactory.create(path)
-                                    document.add(Image(imageData)
-                                        .setAutoScale(true)
-                                        .setHorizontalAlignment(com.itextpdf.layout.properties.HorizontalAlignment.CENTER))
-                                } catch (e: Exception) {
-                                    Log.e("PDF", "Error al agregar imagen", e)
-                                    document.add(Paragraph("[No se pudo cargar la imagen adjunta]")
-                                        .setFont(font)
-                                        .setItalic())
-                                }
+                                    .setItalic())
                             }
                         }
                     }
                 }
             }
 
-            Toast.makeText(this, "PDF guardado en: ${pdfFile.absolutePath}", Toast.LENGTH_LONG).show()
+            // Notificar al sistema sobre el nuevo archivo
+            MediaScannerConnection.scanFile(
+                this,
+                arrayOf(pdfFile.absolutePath),
+                arrayOf("application/pdf"),
+                null
+            )
+
+            Toast.makeText(this, "PDF generado correctamente", Toast.LENGTH_LONG).show()
             compartirPDF(pdfFile)
 
-        } catch (e: SecurityException) {
-            Toast.makeText(this, "Error de permisos: ${e.message}", Toast.LENGTH_LONG).show()
-            Log.e("PDF", "SecurityException", e)
-        } catch (e: IOException) {
-            Toast.makeText(this, "Error de E/S: ${e.message}", Toast.LENGTH_LONG).show()
-            Log.e("PDF", "IOException", e)
         } catch (e: Exception) {
-            Toast.makeText(this, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
-            Log.e("PDF", "Exception", e)
+            Toast.makeText(this, "Error al generar PDF: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+            Log.e("PDF_ERROR", "Error al generar PDF", e)
         }
     }
 
@@ -200,20 +245,25 @@ class pasofinal : AppCompatActivity() {
         try {
             val uri = FileProvider.getUriForFile(
                 this,
-                "${packageName}.provider",
+                "${packageName}.fileprovider",  // Asegúrate que coincida con tu manifest
                 file
             )
 
-            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            val shareIntent = Intent().apply {
+                action = Intent.ACTION_SEND
                 type = "application/pdf"
                 putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             }
 
-            startActivity(Intent.createChooser(shareIntent, "Compartir denuncia"))
+            if (shareIntent.resolveActivity(packageManager) != null) {
+                startActivity(Intent.createChooser(shareIntent, "Compartir denuncia"))
+            } else {
+                Toast.makeText(this, "No hay aplicaciones para compartir PDF", Toast.LENGTH_SHORT).show()
+            }
         } catch (e: Exception) {
-            Toast.makeText(this, "Error al compartir PDF: ${e.message}", Toast.LENGTH_SHORT).show()
-            Log.e("PDF", "Error al compartir", e)
+            Toast.makeText(this, "Error al compartir: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            Log.e("PDF_SHARE", "Error al compartir PDF", e)
         }
     }
 

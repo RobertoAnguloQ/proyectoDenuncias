@@ -5,15 +5,21 @@ import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
+import android.media.MediaScannerConnection
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.Settings
 import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -24,6 +30,12 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class paso_3 : AppCompatActivity() {
+
+    companion object {
+        private const val STORAGE_PERMISSION_REQUEST = 101
+        private const val PICK_IMAGE_REQUEST = 1
+        private const val CAMERA_PERMISSION_REQUEST = 102
+    }
 
     private lateinit var etDescripcion: EditText
     private lateinit var etLugar: EditText
@@ -36,19 +48,52 @@ class paso_3 : AppCompatActivity() {
 
     private var selectedTime: String? = null
     private var selectedDate: String? = null
-    private val PICK_IMAGE_REQUEST = 1
-    private val CAMERA_REQUEST = 2
-    private val CAMERA_PERMISSION_REQUEST = 100
-    private val STORAGE_PERMISSION_REQUEST = 101
-
     private var currentPhotoPath: String? = null
     private var photoUri: Uri? = null
+
+    private val requestPermissions = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions.all { it.value }) {
+            dispatchTakePictureIntent()
+        } else {
+            Toast.makeText(this, "Permisos necesarios denegados", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val takePicture = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) {
+            currentPhotoPath?.let { path ->
+                try {
+                    val bitmap = BitmapFactory.decodeFile(path)
+                    ivPreview.setImageBitmap(bitmap)
+
+                    // Notificar a la galería
+                    MediaScannerConnection.scanFile(
+                        this,
+                        arrayOf(path),
+                        arrayOf("image/jpeg"),
+                        null
+                    )
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Error al procesar la foto", Toast.LENGTH_SHORT).show()
+                    Log.e("CameraError", "Error al mostrar foto", e)
+                }
+            }
+        } else {
+            Toast.makeText(this, "No se pudo guardar la foto", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_paso3)
 
-        // Inicializar vistas
+        initViews()
+        setupListeners()
+    }
+
+    private fun initViews() {
         etDescripcion = findViewById(R.id.etDescripcion)
         etLugar = findViewById(R.id.etLugar)
         btnHora = findViewById(R.id.btnHora)
@@ -57,10 +102,11 @@ class paso_3 : AppCompatActivity() {
         btnTomarFoto = findViewById(R.id.btnTomarFoto)
         btnContinuar = findViewById(R.id.btnContinuar)
         ivPreview = findViewById(R.id.ivPreview)
+    }
 
+    private fun setupListeners() {
         val calendar = Calendar.getInstance()
 
-        // Configurar listeners
         btnHora.setOnClickListener {
             TimePickerDialog(this, { _, hour, minute ->
                 selectedTime = String.format("%02d:%02d", hour, minute)
@@ -84,63 +130,162 @@ class paso_3 : AppCompatActivity() {
         btnAdjuntar.setOnClickListener {
             if (checkStoragePermission()) {
                 openImagePicker()
+            } else {
+                requestStoragePermission()
             }
         }
 
         btnTomarFoto.setOnClickListener {
-            if (checkCameraPermission()) {
+            if (checkAllPermissions()) {
                 dispatchTakePictureIntent()
+            } else {
+                requestNeededPermissions()
             }
         }
 
         btnContinuar.setOnClickListener {
             if (validarCampos()) {
-                val intent = Intent(this, paso_4::class.java).apply {
-                    putExtra("descripcion", etDescripcion.text.toString().trim())
-                    putExtra("lugar", etLugar.text.toString().trim())
-                    putExtra("fecha", selectedDate)
-                    putExtra("hora", selectedTime)
-                    currentPhotoPath?.let { path ->
-                        putExtra("fotoPath", path)
-                    }
-                }
-                startActivity(intent)
+                navigateToNextStep()
             }
         }
     }
 
+    private fun checkAllPermissions(): Boolean {
+        return checkCameraPermission() && checkStoragePermission()
+    }
+
     private fun checkCameraPermission(): Boolean {
-        return if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.CAMERA
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.CAMERA),
-                CAMERA_PERMISSION_REQUEST
-            )
-            false
-        } else {
-            true
-        }
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun checkStoragePermission(): Boolean {
-        return if (ContextCompat.checkSelfPermission(
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
                 this,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
+                Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun requestNeededPermissions() {
+        val permissions = mutableListOf<String>().apply {
+            add(Manifest.permission.CAMERA)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.READ_MEDIA_IMAGES)
+            } else {
+                add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }.toTypedArray()
+
+        if (permissions.any { ActivityCompat.shouldShowRequestPermissionRationale(this, it) }) {
+            showPermissionExplanation(
+                "Permisos requeridos",
+                "La aplicación necesita acceso a la cámara y al almacenamiento para funcionar correctamente",
+                permissions
+            )
+        } else {
+            requestPermissions.launch(permissions)
+        }
+    }
+
+    private fun requestStoragePermission() {
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
+            showPermissionExplanation(
+                "Permiso requerido",
+                "Necesitamos acceso al almacenamiento para seleccionar archivos",
+                arrayOf(permission)
+            )
+        } else {
             ActivityCompat.requestPermissions(
                 this,
-                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
+                arrayOf(permission),
                 STORAGE_PERMISSION_REQUEST
             )
-            false
-        } else {
-            true
         }
+    }
+
+    private fun showPermissionExplanation(title: String, message: String, permissions: Array<String>) {
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("Aceptar") { _, _ ->
+                requestPermissions.launch(permissions)
+            }
+            .setNegativeButton("Configuración") { _, _ ->
+                openAppSettings()
+            }
+            .show()
+    }
+
+    private fun openAppSettings() {
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", packageName, null)
+            startActivity(this)
+        }
+    }
+
+    private fun dispatchTakePictureIntent() {
+        try {
+            val photoFile = createImageFile().also {
+                currentPhotoPath = it.absolutePath
+            }
+
+            photoUri = FileProvider.getUriForFile(
+                this,
+                "${packageName}.fileprovider",
+                photoFile
+            ).also { uri ->
+                // Otorgar permisos temporales a la app de cámara
+                val resolveInfo = packageManager.resolveActivity(
+                    Intent(MediaStore.ACTION_IMAGE_CAPTURE),
+                    PackageManager.MATCH_DEFAULT_ONLY
+                )
+                resolveInfo?.let {
+                    grantUriPermission(
+                        it.activityInfo.packageName,
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
+                }
+
+                // Lanzar la actividad de la cámara
+                takePicture.launch(uri)
+            }
+        } catch (ex: IOException) {
+            Toast.makeText(this, "Error al crear archivo para la foto", Toast.LENGTH_SHORT).show()
+            Log.e("CameraError", "Error al crear archivo", ex)
+        } catch (ex: Exception) {
+            Toast.makeText(this, "Error al abrir la cámara: ${ex.message}", Toast.LENGTH_SHORT).show()
+            Log.e("CameraError", "Error general", ex)
+        }
+    }
+
+    @Throws(IOException::class)
+    private fun createImageFile(): File {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir = File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "ProyectoDenuncias").apply {
+            if (!exists()) mkdirs()
+        }
+
+        return File.createTempFile(
+            "JPEG_${timeStamp}_",
+            ".jpg",
+            storageDir
+        )
     }
 
     private fun openImagePicker() {
@@ -150,41 +295,6 @@ class paso_3 : AppCompatActivity() {
         startActivityForResult(intent, PICK_IMAGE_REQUEST)
     }
 
-    private fun dispatchTakePictureIntent() {
-        Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
-            takePictureIntent.resolveActivity(packageManager)?.also {
-                val photoFile: File? = try {
-                    createImageFile()
-                } catch (ex: IOException) {
-                    Toast.makeText(this, "Error al crear archivo de imagen", Toast.LENGTH_SHORT).show()
-                    null
-                }
-                photoFile?.also {
-                    photoUri = FileProvider.getUriForFile(
-                        this,
-                        "${packageName}.fileprovider",
-                        it
-                    )
-                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri)
-                    startActivityForResult(takePictureIntent, CAMERA_REQUEST)
-                }
-            }
-        }
-    }
-
-    @Throws(IOException::class)
-    private fun createImageFile(): File {
-        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val storageDir: File? = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        return File.createTempFile(
-            "JPEG_${timeStamp}_",
-            ".jpg",
-            storageDir
-        ).apply {
-            currentPhotoPath = absolutePath
-        }
-    }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode == RESULT_OK) {
@@ -192,22 +302,11 @@ class paso_3 : AppCompatActivity() {
                 PICK_IMAGE_REQUEST -> {
                     data?.data?.let { uri ->
                         try {
-                            // Guardar la imagen seleccionada en un archivo temporal
                             currentPhotoPath = saveImageToTempFile(uri)
                             ivPreview.setImageURI(uri)
                         } catch (e: Exception) {
                             Toast.makeText(this, "Error al cargar la imagen", Toast.LENGTH_SHORT).show()
                             Log.e("PASO_3", "Error al cargar imagen", e)
-                        }
-                    }
-                }
-                CAMERA_REQUEST -> {
-                    photoUri?.let { uri ->
-                        try {
-                            ivPreview.setImageURI(uri)
-                        } catch (e: Exception) {
-                            Toast.makeText(this, "Error al mostrar la foto", Toast.LENGTH_SHORT).show()
-                            Log.e("PASO_3", "Error al mostrar foto", e)
                         }
                     }
                 }
@@ -219,8 +318,15 @@ class paso_3 : AppCompatActivity() {
         return try {
             val inputStream = contentResolver.openInputStream(uri)
             val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-            val tempFile = File(storageDir, "TEMP_IMG_$timeStamp.jpg")
+            val storageDir = File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "ProyectoDenuncias").apply {
+                if (!exists()) mkdirs()
+            }
+
+            val tempFile = File.createTempFile(
+                "TEMP_IMG_${timeStamp}_",
+                ".jpg",
+                storageDir
+            )
 
             inputStream?.use { input ->
                 tempFile.outputStream().use { output ->
@@ -241,13 +347,6 @@ class paso_3 : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
-            CAMERA_PERMISSION_REQUEST -> {
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    dispatchTakePictureIntent()
-                } else {
-                    Toast.makeText(this, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
-                }
-            }
             STORAGE_PERMISSION_REQUEST -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     openImagePicker()
@@ -255,7 +354,25 @@ class paso_3 : AppCompatActivity() {
                     Toast.makeText(this, "Permiso de almacenamiento denegado", Toast.LENGTH_SHORT).show()
                 }
             }
+            CAMERA_PERMISSION_REQUEST -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    dispatchTakePictureIntent()
+                }
+            }
         }
+    }
+
+    private fun navigateToNextStep() {
+        val intent = Intent(this, paso_4::class.java).apply {
+            putExtra("descripcion", etDescripcion.text.toString().trim())
+            putExtra("lugar", etLugar.text.toString().trim())
+            putExtra("fecha", selectedDate)
+            putExtra("hora", selectedTime)
+            currentPhotoPath?.let { path ->
+                putExtra("fotoPath", path)
+            }
+        }
+        startActivity(intent)
     }
 
     private fun validarCampos(): Boolean {
