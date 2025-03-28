@@ -1,7 +1,6 @@
 package com.example.proyectodenuncias
 
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
@@ -9,8 +8,6 @@ import android.os.Bundle
 import android.os.Environment
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import java.io.File
 import java.io.FileOutputStream
@@ -24,92 +21,173 @@ class paso5 : AppCompatActivity() {
     private lateinit var radioGroupSexo: RadioGroup
     private lateinit var switchAnonimo: Switch
     private lateinit var btnDenunciar: Button
-
-    private val PERMISSION_REQUEST_CODE = 1
+    private lateinit var btnGenerarPDF: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_paso5)
 
-        etNombre = findViewById(R.id.etNombre)
-        etCorreo = findViewById(R.id.etCorreo)
-        etTelefono = findViewById(R.id.etTelefono)
-        radioGroupSexo = findViewById(R.id.radioGroupSexo)
-        switchAnonimo = findViewById(R.id.switchAnonimo)
-        btnDenunciar = findViewById(R.id.btnDenunciar)
+        try {
+            // Inicialización de vistas
+            etNombre = findViewById(R.id.etNombre)
+            etCorreo = findViewById(R.id.etCorreo)
+            etTelefono = findViewById(R.id.etTelefono)
+            radioGroupSexo = findViewById(R.id.radioGroupSexo)
+            switchAnonimo = findViewById(R.id.switchAnonimo)
+            btnDenunciar = findViewById(R.id.btnDenunciar)
+            btnGenerarPDF = findViewById(R.id.btnGenerarPDF)
 
-        switchAnonimo.setOnCheckedChangeListener { _, isChecked ->
-            etNombre.isEnabled = !isChecked
-            etCorreo.isEnabled = !isChecked
-            etTelefono.isEnabled = !isChecked
-            if (isChecked) {
-                etNombre.text.clear()
-                etCorreo.text.clear()
-                etTelefono.text.clear()
-            }
-        }
+            // Configurar listeners
+            switchAnonimo.setOnCheckedChangeListener { _, isChecked ->
+                etNombre.isEnabled = !isChecked
+                etCorreo.isEnabled = !isChecked
+                etTelefono.isEnabled = !isChecked
 
-        btnDenunciar.setOnClickListener {
-            if (!switchAnonimo.isChecked && (etNombre.text.isEmpty() || etCorreo.text.isEmpty() || etTelefono.text.isEmpty())) {
-                Toast.makeText(this, "Por favor, complete todos los campos", Toast.LENGTH_SHORT).show()
-            } else {
-                val selectedSexo = when (radioGroupSexo.checkedRadioButtonId) {
-                    R.id.rbFemenino -> "Femenino"
-                    R.id.rbMasculino -> "Masculino"
-                    R.id.rbOtro -> "Otro"
-                    else -> "No especificado"
+                if (isChecked) {
+                    etNombre.setText("")
+                    etCorreo.setText("")
+                    etTelefono.setText("")
                 }
-
-                // Generar y abrir PDF
-                generatePDF(etNombre.text.toString(), etCorreo.text.toString(), etTelefono.text.toString(), selectedSexo)
-
-                // Mostrar mensaje y redirigir al paso final
-                Toast.makeText(this, "Denuncia enviada como: $selectedSexo", Toast.LENGTH_LONG).show()
-                val folio = generateFolio()
-                val intent = Intent(this, pasofinal::class.java)
-                intent.putExtra("FOLIO", folio)
-                startActivity(intent)
             }
+
+            btnDenunciar.setOnClickListener {
+                if (validarCampos()) {
+                    generarYEnviarDenuncia()
+                }
+            }
+
+            btnGenerarPDF.setOnClickListener {
+                if (validarCampos()) {
+                    generarYEnviarDenuncia()
+                }
+            }
+
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error al inicializar la pantalla", Toast.LENGTH_SHORT).show()
+            finish()
         }
     }
 
-    private fun generateFolio(): String {
-        return (1000..9999).random().toString()
+    private fun validarCampos(): Boolean {
+        if (!switchAnonimo.isChecked) {
+            if (etNombre.text.toString().trim().isEmpty()) {
+                etNombre.error = "Ingrese su nombre o active anónimo"
+                etNombre.requestFocus()
+                return false
+            }
+
+            if (etCorreo.text.toString().trim().isEmpty()) {
+                etCorreo.error = "Ingrese su correo"
+                etCorreo.requestFocus()
+                return false
+            } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(etCorreo.text.toString()).matches()) {
+                etCorreo.error = "Ingrese un correo válido"
+                etCorreo.requestFocus()
+                return false
+            }
+
+            if (etTelefono.text.toString().trim().isEmpty()) {
+                etTelefono.error = "Ingrese su teléfono"
+                etTelefono.requestFocus()
+                return false
+            }
+        }
+        return true
     }
 
-    private fun generatePDF(nombre: String, correo: String, telefono: String, sexo: String) {
+    private fun generarYEnviarDenuncia() {
+        // Generar PDF primero
+        val pdfPath = generatePDF() ?: return // Si falla, salir
+
+        // Crear intent para pasofinal
+        val intent = Intent(this, pasofinal::class.java).apply {
+            // Pasar datos del usuario
+            putExtra("nombre", etNombre.text.toString())
+            putExtra("correo", etCorreo.text.toString())
+            putExtra("telefono", etTelefono.text.toString())
+            putExtra("anonimo", switchAnonimo.isChecked)
+
+            // Pasar sexo seleccionado
+            putExtra("sexo", when (radioGroupSexo.checkedRadioButtonId) {
+                R.id.rbFemenino -> "Femenino"
+                R.id.rbMasculino -> "Masculino"
+                R.id.rbOtro -> "Otro"
+                else -> "No especificado"
+            })
+
+            // Pasar ruta del PDF generado
+            putExtra("pdfPath", pdfPath)
+
+            // Pasar datos adicionales si es necesario
+            intent.extras?.let { bundle ->
+                putExtras(bundle)
+            }
+        }
+
+        // Iniciar actividad pasofinal
+        startActivity(intent)
+    }
+
+    private fun generatePDF(): String? {
         val document = PdfDocument()
-        val paint = Paint()
-        val pageInfo = PdfDocument.PageInfo.Builder(300, 600, 1).create()
+        val paint = Paint().apply {
+            textSize = 12f
+            isAntiAlias = true
+        }
+
+        // Configurar página A4
+        val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
         val page = document.startPage(pageInfo)
         val canvas: Canvas = page.canvas
-        paint.textSize = 12f
 
-        canvas.drawText("Nombre: $nombre", 20f, 50f, paint)
-        canvas.drawText("Correo: $correo", 20f, 70f, paint)
-        canvas.drawText("Telefono: $telefono", 20f, 90f, paint)
-        canvas.drawText("Sexo: $sexo", 20f, 110f, paint)
+        // Obtener datos
+        val nombre = if (switchAnonimo.isChecked) "Anónimo" else etNombre.text.toString()
+        val correo = etCorreo.text.toString()
+        val telefono = etTelefono.text.toString()
+        val sexo = when (radioGroupSexo.checkedRadioButtonId) {
+            R.id.rbFemenino -> "Femenino"
+            R.id.rbMasculino -> "Masculino"
+            R.id.rbOtro -> "Otro"
+            else -> "No especificado"
+        }
+
+        // Contenido del PDF
+        canvas.drawText("DENUNCIA OFICIAL", 50f, 50f, paint.apply { textSize = 18f })
+        canvas.drawText("Información del Denunciante:", 50f, 80f, paint.apply { textSize = 14f })
+        canvas.drawText("Nombre: $nombre", 50f, 100f, paint)
+        canvas.drawText("Correo: $correo", 50f, 120f, paint)
+        canvas.drawText("Teléfono: $telefono", 50f, 140f, paint)
+        canvas.drawText("Sexo: $sexo", 50f, 160f, paint)
 
         document.finishPage(page)
 
-        try {
-            val file = File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "denuncia_${System.currentTimeMillis()}.pdf")
-            document.writeTo(FileOutputStream(file))
+        return try {
+            // Crear directorio si no existe
+            val storageDir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: run {
+                Toast.makeText(this, "No se pudo acceder al almacenamiento", Toast.LENGTH_SHORT).show()
+                return null
+            }
+
+            if (!storageDir.exists()) {
+                storageDir.mkdirs()
+            }
+
+            // Guardar PDF
+            val fileName = "denuncia_${System.currentTimeMillis()}.pdf"
+            val file = File(storageDir, fileName)
+            FileOutputStream(file).use { fos ->
+                document.writeTo(fos)
+            }
             document.close()
 
-            Toast.makeText(this, "PDF generado: ${file.absolutePath}", Toast.LENGTH_SHORT).show()
-
-            // Abrir PDF automáticamente
-            val uri = FileProvider.getUriForFile(this, "$packageName.provider", file)
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/pdf")
-                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            }
-            startActivity(intent)
-
+            // Devolver la ruta del archivo
+            file.absolutePath
         } catch (e: IOException) {
-            e.printStackTrace()
-            Toast.makeText(this, "Error al generar el PDF", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Error al generar PDF: ${e.message}", Toast.LENGTH_SHORT).show()
+            null
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error inesperado: ${e.message}", Toast.LENGTH_SHORT).show()
+            null
         }
     }
 }

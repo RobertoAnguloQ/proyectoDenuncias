@@ -5,6 +5,6 @@
     <color name="magenta">#47085B</color>
     <color name="purple_200">#9908CA</color>
     <color name="purple_500">#C7C100FF</color>
-
+    <color name="light_gray">#C7C4C4</color>
 
 </resources>

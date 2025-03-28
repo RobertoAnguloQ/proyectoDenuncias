@@ -1,4 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <external-files-path name="pdfs" path="." />
+    <!-- Directorio de caché interna de la aplicación -->
+    <cache-path
+        name="internal_cache"
+        path="/" />
+
+    <!-- Directorio de caché externa de la aplicación -->
+    <external-cache-path
+        name="external_cache"
+        path="/" />
+
+    <!-- Directorio para imágenes (usado por la cámara y selección de fotos) -->
+    <external-files-path
+        name="images"
+        path="Pictures/" />
+
+    <!-- Directorio para documentos PDF generados -->
+    <external-files-path
+        name="documents"
+        path="Documents/" />
+
+    <!-- Directorio raíz de archivos externos (uso cuidadoso) -->
+    <external-files-path
+        name="external_files"
+        path="." />
+
+    <!-- Directorio de descargas (opcional para futuras implementaciones) -->
+    <!-- <external-path
+        name="downloads"
+        path="Download/" /> -->
 </paths>
